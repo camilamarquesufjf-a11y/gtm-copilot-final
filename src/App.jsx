@@ -404,27 +404,38 @@ RETORNE neste formato EXATO:
   }
 }`;
 
-        const intelRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: intelPrompt }] }],
-            generationConfig: { 
-               maxOutputTokens: 4096, 
-               temperature: 0.1,
-               responseMimeType: "application/json"
-             },
-            tools: [{
-              googleSearch: {}
-            }]
-          })
-        });
+        // FIX: Removido responseMimeType e tools corrigido para array
+        const intelRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: intelPrompt }] }],
+              generationConfig: {
+                maxOutputTokens: 4096,
+                temperature: 0.1,
+                // REMOVIDO responseMimeType: "application/json" para evitar conflito com tools
+              },
+              // FIX: Formato correto de tools para Google Search
+              tools: [{ google_search: {} }] 
+            }),
+          }
+        );
 
+        // Tratamento robusto de erro HTTP 400
+        if (!intelRes.ok) {
+          const errorText = await intelRes.text();
+          console.error("Erro detalhado do Intel:", errorText);
+          throw new Error(`Intel HTTP ${intelRes.status}: ${errorText}`);
+        }
+        
         const intelJson = await intelRes.json();
         const intelText = intelJson.candidates?.[0]?.content?.parts?.[0]?.text;
-        
-        if (!intelText) throw new Error("Intel vazio");
+              
+        if (!intelText) throw new Error("Intel vazio (sem texto gerado)");
 
+        // Como removemos application/json, parseamos manualmente
         intelContext = cleanJSON(intelText);
         
         if (intelContext) {
