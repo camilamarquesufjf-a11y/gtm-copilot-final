@@ -9,32 +9,27 @@ import {
   ChevronLeft, Building2, User, Server, Database, Lock
 } from 'lucide-react';
 
-const USE_MOCK = false; 
 const GEMINI_MODEL = "gemini-2.0-flash-exp"; 
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.1 } }
-};
-const itemVariants = {
-  hidden: { y: 20, opacity: 0 },
-  show: { y: 0, opacity: 1 }
-};
+const containerVariants = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.1 } } };
+const itemVariants = { hidden: { y: 20, opacity: 0 }, show: { y: 0, opacity: 1 } };
 const wizardVariants = {
   enter: (direction) => ({ x: direction > 0 ? 50 : -50, opacity: 0, scale: 0.95 }),
   center: { zIndex: 1, x: 0, opacity: 1, scale: 1 },
   exit: (direction) => ({ zIndex: 0, x: direction < 0 ? 50 : -50, opacity: 0, scale: 0.95 })
 };
 
-const fieldLabels = { productName: "Nome do Produto", description: "Descrição", stage: "Estágio", persona: "Persona", pricing: "Precificação", churnRate: "Churn Rate", comp1: "Competidor Principal", urgency: "Urgência" };
+const fieldLabels = { productName: "Nome", description: "Descrição", stage: "Estágio", persona: "Persona", pricing: "Preço", churnRate: "Churn", comp1: "Competidor", urgency: "Urgência" };
 
 const GTMCopilot = () => {
   const [activeTab, setActiveTab] = useState('input');
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showPresets, setShowPresets] = useState(false);
+  
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('gtm_gemini_key') || '');
   const [perplexityApiKey, setPerplexityApiKey] = useState(() => localStorage.getItem('gtm_pplx_key') || '');
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
+
   const [currentStep, setCurrentStep] = useState(1);
   const [direction, setDirection] = useState(0);
   const [errors, setErrors] = useState({});
@@ -55,6 +50,7 @@ const GTMCopilot = () => {
   const [pipelineStep, setPipelineStep] = useState(0);
   const [statusMessage, setStatusMessage] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+
   const [perplexityIntel, setPerplexityIntel] = useState(null);
   const [strategyCore, setStrategyCore] = useState(null);
   const [battlecards, setBattlecards] = useState(null);
@@ -67,19 +63,26 @@ const GTMCopilot = () => {
   useEffect(() => {
     const savedTheme = localStorage.getItem('gtm_theme');
     if (savedTheme === 'dark') setIsDarkMode(true);
+
     const handleKeyDown = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         if (status === 'idle' && activeTab === 'input' && currentStep === 5) runGTMPipeline();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
+
     const script = document.createElement('script');
     script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
     script.async = true;
     document.body.appendChild(script);
+
     const savedForm = localStorage.getItem('gtm_formData');
     if (savedForm) { try { setFormData(prev => ({...prev, ...JSON.parse(savedForm)})); } catch(e){} }
-    return () => { window.removeEventListener('keydown', handleKeyDown); document.body.removeChild(script); };
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.removeChild(script);
+    };
   }, []);
 
   useEffect(() => {
@@ -103,31 +106,28 @@ const GTMCopilot = () => {
     if (step === 4) { check('comp1'); }
     if (step === 5) { check('urgency'); }
     setErrors(newErrors);
-    if (Object.keys(newErrors).length > 0) {
-      setTimeout(() => { errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 100);
-    }
+    if (Object.keys(newErrors).length > 0) { setTimeout(() => { errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 100); }
     return Object.keys(newErrors).length === 0;
   };
 
   const handleNext = () => { if (validateStep(currentStep)) { setDirection(1); setCurrentStep(prev => Math.min(prev + 1, 5)); } };
   const handlePrev = () => { setDirection(-1); setCurrentStep(prev => Math.max(prev - 1, 1)); };
-  
-  const loadPreset = (preset) => {
-    if (preset === 'churn') {
-      setFormData({
-        ...formData, productName: "Churn Buster AI", description: "Plataforma que identifica clientes em risco 3 meses antes e sugere playbooks de retenção.", stage: "Redução de Churn", businessType: "B2B", accountSize: "Mid-market", persona: "Head de Customer Success", numCustomers: 150, pricing: "R$ 5k/mês", ticketVal: 5000, churnRate: 20, nrrTarget: 115, gtmMotion: "Sales-led", comp1: "Gainsight", comp2: "ChurnZero", comp3: "Planilhas", whereLose: "Complexidade de setup e preço alto do Gainsight.", urgency: "Kill Revenue (Crítico)", timeline: "Q1 deste ano", riskCustomers: 30
-      });
-      setErrors({});
-    }
-    setShowPresets(false);
+
+  const loadPreset = () => {
+    setFormData({
+      ...formData, productName: "Churn Buster AI", description: "Plataforma de retenção de clientes.", stage: "Scale-up", businessType: "B2B", persona: "Head de CS", pricing: "R$ 5k/mês", ticketVal: 5000, churnRate: 20, comp1: "Gainsight", comp2: "ChurnZero", comp3: "Excel", urgency: "Alta", riskCustomers: 30
+    });
+    setErrors({}); setShowPresets(false);
   };
 
   const handleCopy = (text) => { const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch (err) {} document.body.removeChild(ta); };
+  
   const downloadPDF = async (tabName, ref) => {
-    if (!ref.current || !window.html2pdf) { alert("Aguarde o carregamento do gerador de PDF."); return; }
-    const opt = { margin: 0.5, filename: `${formData.productName.replace(/\s+/g, '_')}_${tabName}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } };
+    if (!ref.current || !window.html2pdf) { alert("Aguarde o carregamento do PDF."); return; }
+    const opt = { margin: 0.5, filename: `${formData.productName}_${tabName}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } };
     window.html2pdf().from(ref.current).set(opt).save();
   };
+
   const cleanJSON = (text) => {
     if (!text) return null;
     let clean = text.replace(/```json\n?/g, '').replace(/```\n?/g, '');
@@ -135,29 +135,25 @@ const GTMCopilot = () => {
     if (firstBrace !== -1 && lastBrace !== -1) clean = clean.substring(firstBrace, lastBrace + 1);
     try { return JSON.parse(clean); } catch (e) { try { return JSON.parse(clean.replace(/[\u0000-\u001F]+/g, ' ')); } catch (e2) { return null; } }
   };
+
   const handleSaveKeys = (newGeminiKey, newPplxKey) => { setApiKey(newGeminiKey); setPerplexityApiKey(newPplxKey); localStorage.setItem('gtm_gemini_key', newGeminiKey); localStorage.setItem('gtm_pplx_key', newPplxKey); setShowApiKeyModal(false); };
 
   const runGTMPipeline = async () => {
-    if (!apiKey) { setStatus('error'); setErrorMsg("Chave Gemini não configurada."); setShowApiKeyModal(true); return; }
-    if (!isPipelineReady()) { setErrorMsg("⚠️ Preencha todos os campos obrigatórios"); validateStep(currentStep); return; }
-    setStatus('processing'); setPipelineStep(0); setErrorMsg(''); setStatusMessage('🔥 Iniciando Live APIs...'); setStrategyCore(null); setBattlecards(null); setMessaging(null); setPerplexityIntel(null);
+    if (!apiKey) { setStatus('error'); setErrorMsg("Configure a API Key."); setShowApiKeyModal(true); return; }
+    if (!isPipelineReady()) { setErrorMsg("Preencha os campos obrigatórios"); validateStep(currentStep); return; }
+    setStatus('processing'); setPipelineStep(0); setErrorMsg(''); setStatusMessage('🔥 Iniciando...'); setStrategyCore(null); setBattlecards(null); setMessaging(null); setPerplexityIntel(null);
+    
     try {
-      setPipelineStep(1); setStatusMessage('🕵️ 1/4 Market Intel (Search)...');
+      setPipelineStep(1); setStatusMessage('🕵️ 1/4 Market Intel...');
       try {
-        const intelPrompt = `Faça uma análise de mercado BR 2026 para ${formData.productName}. Contexto: Competidores ${formData.comp1}, ${formData.comp2}. Persona ${formData.persona}. Responda em 200 palavras sobre tendências e gaps.`;
-        const intelRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: intelPrompt }] }], generationConfig: { maxOutputTokens: 2048, temperature: 0.3 }, tools: [{ googleSearch: {} }] }) });
+        const intelPrompt = `Análise mercado BR para ${formData.productName}. Competidores ${formData.comp1}, ${formData.comp2}. Persona ${formData.persona}. 200 palavras sobre tendências.`;
+        const intelRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: intelPrompt }] }], generationConfig: { maxOutputTokens: 2048 } }) });
         const intelData = await intelRes.json();
-        const intelText = intelData.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (intelText) { setPerplexityIntel({ insight: intelText }); console.log('✅ Gemini Intel OK'); } else throw new Error('Intel vazio');
-      } catch (intelErr) {
-        console.warn('⚠️ Intel Web falhou, fallback:', intelErr.message);
-        const fbRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: `Analise o mercado para: ${formData.productName}, ${formData.comp1}` }] }], generationConfig: { maxOutputTokens: 1024 } }) });
-        const fbData = await fbRes.json();
-        setPerplexityIntel({ insight: fbData.candidates?.[0]?.content?.parts?.[0]?.text || 'Análise contextual básica.' });
-      }
+        setPerplexityIntel({ insight: intelData.candidates?.[0]?.content?.parts?.[0]?.text || "Sem dados." });
+      } catch (e) { console.warn(e); setPerplexityIntel({ insight: "Intel indisponível." }); }
 
       setPipelineStep(2); setStatusMessage('🧠 2/4 Strategy Core...');
-      const strategyPrompt = `PMM Sênior. Gere GTM Strategy JSON: ${JSON.stringify(formData)}. JSON EXATO: { "gtm_thesis": {"enemy":"", "why_now":"", "tension":""}, "primary_gtm_decision": {"primary_target_customer":"", "dominant_value":""}, "strategic_thesis": {"positioning": {"category":"", "unique_value":""}, "value_proposition": {"core_promise":""}}, "gtm_strategy_doc": "# Strategy MD..." }`;
+      const strategyPrompt = `Gere GTM Strategy JSON para: ${JSON.stringify(formData)}. JSON EXATO: { "gtm_thesis": {"enemy":"", "why_now":"", "tension":""}, "primary_gtm_decision": {"primary_target_customer":"", "dominant_value":""}, "strategic_thesis": {"positioning": {"category":"", "unique_value":""}, "value_proposition": {"core_promise":""}}, "gtm_strategy_doc": "# Strategy MD..." }`;
       const coreRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: strategyPrompt }] }], generationConfig: { responseMimeType: "application/json" } }) });
       const coreData = await coreRes.json();
       setStrategyCore(cleanJSON(coreData.candidates?.[0]?.content?.parts?.[0]?.text));
@@ -173,7 +169,7 @@ const GTMCopilot = () => {
       setBattlecards(cleanJSON(battleData.candidates?.[0]?.content?.parts?.[0]?.text));
       setMessaging(cleanJSON(msgData.candidates?.[0]?.content?.parts?.[0]?.text));
 
-      setPipelineStep(4); setStatus('success'); setStatusMessage('✅ GTM Pack Completo!'); setActiveTab('strategy');
+      setPipelineStep(4); setStatus('success'); setStatusMessage('✅ Pronto!'); setActiveTab('strategy');
     } catch (err) { console.error(err); setStatus('error'); setErrorMsg(err.message); }
   };
 
@@ -194,12 +190,13 @@ const GTMCopilot = () => {
             <button onClick={() => setShowApiKeyModal(true)} className={`p-2 rounded-full transition-colors ${isDarkMode ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-100 text-slate-600'}`}><Shield className="w-5 h-5" /></button>
             <div className="relative">
               <button onClick={() => setShowPresets(!showPresets)} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${isDarkMode ? 'bg-slate-800 border-slate-700 hover:bg-slate-700' : 'bg-white border-slate-200 hover:bg-slate-50'}`}><Layers size={14} /> Presets</button>
-              {showPresets && (<div className={`absolute top-full right-0 mt-2 w-48 rounded-xl shadow-xl border p-1 z-50 ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}><button onClick={() => loadPreset('churn')} className={`w-full text-left px-3 py-2 text-xs rounded-lg flex items-center gap-2 ${isDarkMode ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}><TrendingUp size={14} className="text-emerald-500"/> Churn Buster</button></div>)}
+              {showPresets && (<div className={`absolute top-full right-0 mt-2 w-48 rounded-xl shadow-xl border p-1 z-50 ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}><button onClick={loadPreset} className={`w-full text-left px-3 py-2 text-xs rounded-lg flex items-center gap-2 ${isDarkMode ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}><TrendingUp size={14} className="text-emerald-500"/> Churn Buster</button></div>)}
             </div>
             <button onClick={() => setIsDarkMode(!isDarkMode)} className={`p-2 rounded-full transition-colors ${isDarkMode ? 'bg-slate-800 text-yellow-400 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>{isDarkMode ? <Sun size={16} /> : <Moon size={16} />}</button>
           </div>
         </div>
       </header>
+
       <div className="max-w-[1600px] mx-auto px-6 py-8">
         <div className="flex justify-center mb-10">
           <div className={`p-1.5 rounded-2xl border shadow-sm inline-flex items-center gap-1 ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
