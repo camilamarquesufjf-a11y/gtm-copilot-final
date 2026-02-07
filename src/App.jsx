@@ -343,25 +343,66 @@ const GTMCopilot = () => {
     setBattlecards(null);
     setMessaging(null);
     setPerplexityIntel(null);
+    
+    let intelContext = null; // Store for Step 2
   
     try {
-      // ===== 1️⃣ GEMINI INTEL (COM BUSCA WEB REAL) =====
+      // ===== 1️⃣ GEMINI INTEL STRATEGIC (COM BUSCA WEB REAL) =====
       setPipelineStep(1);
-      setStatusMessage('🕵️ 1/4 Market Intel (Google Search)...');
+      setStatusMessage('🕵️ 1/4 Market Intel (Structured Web Search)...');
 
       try {
-        const intelPrompt = `Faça uma análise de mercado BR 2026 para ${formData.productName}.
-Contexto:
-- Competidores: ${formData.comp1}, ${formData.comp2}, ${formData.comp3}
-- Persona: ${formData.persona}
-- Mercado: ${formData.businessType}
-- Descrição: ${formData.description}
+        const intelPrompt = `Você é um Analista de Mercado Sênior (Brasil). Gere INTEL DE MERCADO atual (BR, 2026) usando busca web.
+REGRAS:
+- Retorne APENAS JSON válido (sem markdown).
+- Cada claim deve ser atômico e verificável, com fonte (url; se não houver, use "source_url": null e explique em "note").
+- NÃO invente números. Se não encontrar dado confiável, não chute.
+- Foque no contexto do produto + ICP + competidores fornecidos.
+- Linguagem: pt-BR.
 
-Pesquise informações atualizadas na web e responda em 200 palavras:
-1. Tendências de mercado BR 2026
-2. Análise competitiva (preços, diferenciais, market share)
-3. Gaps e oportunidades não exploradas
-4. Momento de mercado (por que agora?)`;
+INPUTS (JSON):
+${JSON.stringify(formData, null, 2)}
+
+RETORNE neste formato EXATO:
+{
+  "metadata": { "market": "BR", "year": 2026, "generated_at": "${new Date().toISOString()}" },
+  "context": {
+    "productName": "${formData.productName}",
+    "description": "${formData.description}",
+    "persona": "${formData.persona}",
+    "businessType": "${formData.businessType}",
+    "competitors": ["${formData.comp1}", "${formData.comp2}", "${formData.comp3}"]
+  },
+  "claims": [
+    {
+      "claim_id": "C1",
+      "type": "trend|competitor|pricing|regulation|buyer_behavior|macro|tech",
+      "claim": "string (1 frase)",
+      "why_it_matters": "string (1 frase)",
+      "implication_for_gtm": "string (1 frase acionável)",
+      "source_name": "string",
+      "source_url": "string|null",
+      "retrieved_at": "${new Date().toISOString()}"
+    }
+  ],
+  "competitor_cards": [
+    {
+      "name": "string",
+      "positioning": "string",
+      "pricing_signals": "string",
+      "strengths": ["string"],
+      "weaknesses": ["string"],
+      "sources": [{ "source_name": "string", "source_url": "string|null" }]
+    }
+  ],
+  "gaps_opportunities": [
+    { "gap": "string", "for_whom": "string", "why_now": "string", "claims_supporting": ["C1"] }
+  ],
+  "why_now_summary": {
+    "narrative": "string (3-5 frases)",
+    "claims_supporting": ["C1", "C2"]
+  }
+}`;
 
         const intelRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
           method: 'POST',
@@ -369,8 +410,9 @@ Pesquise informações atualizadas na web e responda em 200 palavras:
           body: JSON.stringify({
             contents: [{ parts: [{ text: intelPrompt }] }],
             generationConfig: { 
-               maxOutputTokens: 2048, 
-               temperature: 0.3 
+               maxOutputTokens: 4096, 
+               temperature: 0.1,
+               responseMimeType: "application/json"
              },
             tools: [{
               googleSearch: {}
@@ -378,86 +420,148 @@ Pesquise informações atualizadas na web e responda em 200 palavras:
           })
         });
 
-        const intelData = await intelRes.json();
-        const intelText = intelData.candidates?.[0]?.content?.parts?.[0]?.text;
+        const intelJson = await intelRes.json();
+        const intelText = intelJson.candidates?.[0]?.content?.parts?.[0]?.text;
         
-        if (intelText && intelText.length > 100) {
-          setPerplexityIntel({ 
-             insight: intelText, 
-             competitors_analysis: intelText 
+        if (!intelText) throw new Error("Intel vazio");
+
+        intelContext = cleanJSON(intelText);
+        
+        if (intelContext) {
+           setPerplexityIntel({ 
+             insight: intelContext.why_now_summary?.narrative || "Intel gerado.", 
+             competitors_analysis: JSON.stringify(intelContext.competitor_cards, null, 2) 
            });
-          console.log('✅ Gemini Intel (Web Search) OK');
+           console.log('✅ Gemini Intel Structured OK');
         } else {
-          throw new Error('Intel vazio');
+           throw new Error("Falha no parse do Intel");
         }
       
       } catch (intelErr) {
         console.warn('⚠️ Intel Web falhou, usando fallback:', intelErr.message);
-        
-        const fallbackPrompt = `Baseado no seu conhecimento, analise o mercado BR para:
-Produto: ${formData.productName}
-Competidores: ${formData.comp1}, ${formData.comp2}
-Persona: ${formData.persona}
-Forneça insights de mercado, tendências e oportunidades (150 palavras).`;
-
-        try {
-          const fallbackRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: fallbackPrompt }] }],
-              generationConfig: { maxOutputTokens: 1024, temperature: 0.2 }
-            })
-          });
-          
-          const fallbackData = await fallbackRes.json();
-          const fallbackText = fallbackData.candidates?.[0]?.content?.parts?.[0]?.text || 'Análise de mercado baseada em dados fornecidos.';
-          
-          setPerplexityIntel({ 
-             insight: fallbackText, 
-             competitors_analysis: fallbackText 
-           });
-          console.log('✅ Fallback Intel OK (sem web search)');
-          
-        } catch (finalErr) {
-          console.error('❌ Todos os métodos de Intel falharam:', finalErr);
-          setPerplexityIntel({ 
-             insight: `Análise Contextual: ${formData.productName} compete no mercado ${formData.businessType} contra ${formData.comp1} e ${formData.comp2}. Diferencial: ${formData.description.substring(0, 150)}.`
-          });
-        }
+        // Fallback básico para não travar o pipeline
+        intelContext = { error: "Web Search Failed", manually_created: true };
+        setPerplexityIntel({ insight: "Falha na busca web. Usando conhecimento interno do modelo para a estratégia." });
       }
 
       setPipelineStep(2);
   
-      // ===== 2️⃣ GEMINI STRATEGY CORE =====
-      setStatusMessage('🧠 2/4 Strategy Core...');
+      // ===== 2️⃣ GEMINI STRATEGY CORE v2 (INPUTS + INTEL + COVERAGE) =====
+      setStatusMessage('🧠 2/4 Strategy Core v2 (Validating)...');
       
-      const strategyPrompt = `Você é um PMM Sênior especialista em GTM. Gere uma estratégia GTM completa baseada nestes dados:${JSON.stringify(formData, null, 2)}
-  RETORNE APENAS UM JSON VÁLIDO neste formato EXATO:
-  {
-    "metadata": { "market": "BR", "generated_at": "${new Date().toISOString()}" },
-    "gtm_thesis": {
-      "enemy": "O principal inimigo/status quo que estamos combatendo",
-      "core_belief": "Nossa crença fundamental sobre o mercado",
-      "tension": "A tensão que o cliente sente (dor aguda)",
-      "why_now": "Por que agora é o momento certo"
+      const strategyPrompt = `Você é um PMM Sênior especialista em GTM no Brasil.
+
+OBJETIVO:
+Transformar TODOS os inputs do wizard + INTEL estruturado (com claims) em um GTM Strategy Core acionável.
+
+REGRAS NÃO NEGOCIÁVEIS:
+1) Retorne APENAS JSON válido (sem markdown).
+2) Mantenha os campos existentes do schema v1: metadata, gtm_thesis, primary_gtm_decision, strategic_thesis, gtm_strategy_doc.
+3) Adicione os campos novos: evidence, input_coverage, actionability (conforme schema).
+4) USO OBRIGATÓRIO DOS INPUTS:
+   - Para todo campo preenchido (não vazio) em form_data, você DEVE marcar como used=true em input_coverage.field_map e explicar "how_used".
+   - Se algum campo preenchido não for usado, liste em input_coverage.coverage_summary.missing_fields e reduza coverage_score.
+   - O output será rejeitado se missing_fields não estiver vazio.
+5) INTEL É O CORAÇÃO:
+   - Toda decisão crítica (enemy, why_now, category, unique_value, core_promise, target_customer, use_case, dominant_value) deve citar pelo menos 2 claim_id em evidence.decision_trace.
+   - Não invente fatos fora do intel_claims e form_data. Se faltar intel, declare em assumptions + how_to_validate.
+6) DIFERENCIAÇÃO POR ESTÁGIO (stage):
+   - Ajuste estratégia e plano 30-60-90 explicitamente ao stage informado.
+7) ACIONABILIDADE:
+   - actionability deve conter métricas, plano 30-60-90, hipóteses de canal e testes de messaging coerentes com pricing, churnRate, nrrTarget, urgency, timeline, gtmMotion, tamRisk.
+
+INPUTS:
+form_data: ${JSON.stringify(formData, null, 2)}
+intel: ${JSON.stringify(intelContext, null, 2)}
+
+RETORNE no schema strategy_core_v2:
+{
+  "metadata": {
+    "market": "BR",
+    "generated_at": "${new Date().toISOString()}",
+    "model": "gemini-2.5-flash",
+    "version": "strategy_core_v2",
+    "language": "pt-BR"
+  },
+  "gtm_thesis": {
+    "enemy": "string",
+    "core_belief": "string",
+    "tension": "string",
+    "why_now": "string"
+  },
+  "primary_gtm_decision": {
+    "primary_target_customer": "string",
+    "primary_use_case": "string",
+    "dominant_value": "string"
+  },
+  "strategic_thesis": {
+    "positioning": {
+      "category": "string",
+      "unique_value": "string"
     },
-    "primary_gtm_decision": {
-      "primary_target_customer": "Persona principal detalhada",
-      "primary_use_case": "Caso de uso dominante",
-      "dominant_value": "Valor percebido principal"
-    },
-    "strategic_thesis": {
-      "positioning": {
-        "category": "Categoria de mercado",
-        "unique_value": "Diferencial único vs. concorrentes"
-      },
-      "value_proposition": {
-        "core_promise": "Promessa central de valor"
+    "value_proposition": {
+      "core_promise": "string"
+    }
+  },
+  "gtm_strategy_doc": "# Markdown (>= 500 palavras)\\n...",
+  "evidence": {
+    "inputs_used": {},
+    "intel_claims_used": [
+      {
+        "claim_id": "C1",
+        "used_in": ["gtm_thesis.why_now", "strategic_thesis.positioning.category"],
+        "rationale": "string curto"
       }
+    ],
+    "decision_trace": [
+      {
+        "decision_id": "D1",
+        "decision_path": "gtm_thesis.enemy",
+        "decision": "string",
+        "input_fields": ["stage", "whereLose", "comp3"],
+        "intel_claim_ids": ["C1", "C3"],
+        "confidence": 0.0,
+        "assumptions": ["string"],
+        "risks": ["string"],
+        "how_to_validate": ["string"]
+      }
+    ]
+  },
+  "input_coverage": {
+    "coverage_summary": {
+      "filled_fields_count": 0,
+      "covered_fields_count": 0,
+      "missing_fields": ["string"],
+      "coverage_score": 0.0
     },
-    "gtm_strategy_doc": "# Estratégia GTM em Markdown (mínimo 500 palavras)"
-  }`;
+    "field_map": {
+      "whereLose": {
+        "filled": true,
+        "used": true,
+        "how_used": "string (1-2 frases: como isso alterou uma escolha)",
+        "decisions_impacted": ["D1", "D4"],
+        "strategy_doc_sections_impacted": ["Posicionamento", "Objeções", "Plano 30-60-90"]
+      }
+    }
+  },
+  "actionability": {
+    "north_star_metric": "string",
+    "success_metrics": [
+      { "metric": "string", "target": "string", "timeframe": "string", "why": "string" }
+    ],
+    "30_60_90_plan": {
+      "days_0_30": ["string"],
+      "days_31_60": ["string"],
+      "days_61_90": ["string"]
+    },
+    "channel_hypotheses": [
+      { "channel": "string", "why_now": "string", "first_experiment": "string", "success_criteria": "string" }
+    ],
+    "messaging_tests": [
+      { "hypothesis": "string", "variant_a": "string", "variant_b": "string", "audience": "string", "metric": "string" }
+    ]
+  }
+}`;
   
       const coreRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`, {
         method: 'POST',
@@ -467,7 +571,7 @@ Forneça insights de mercado, tendências e oportunidades (150 palavras).`;
           generationConfig: { 
              maxOutputTokens: 8192, 
              temperature: 0.2,
-            responseMimeType: "application/json"  // FORÇA JSON
+             responseMimeType: "application/json"
           }
         })
       });
@@ -476,11 +580,54 @@ Forneça insights de mercado, tendências e oportunidades (150 palavras).`;
       const coreText = coreData.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!coreText) throw new Error("Gemini Strategy vazio");
       
-      const parsedStrategy = cleanJSON(coreText);
+      let parsedStrategy = cleanJSON(coreText);
       if (!parsedStrategy) throw new Error("JSON Strategy inválido");
+
+      // === VALIDAÇÃO PÓS-PARSE & RE-PROMPT ===
+      const missingFields = parsedStrategy.input_coverage?.coverage_summary?.missing_fields || [];
+      
+      if (missingFields.length > 0) {
+        console.warn("⚠️ Strategy Incompleta. Missing Fields:", missingFields);
+        setStatusMessage(`🛠️ Refinando estratégia (Cobertura: ${parsedStrategy.input_coverage?.coverage_summary?.coverage_score || 'Baixa'})...`);
+        
+        const repairPrompt = `
+Você retornou um JSON que falhou nas validações de cobertura.
+
+ERROS:
+- missing_fields (campos preenchidos não cobertos): ${JSON.stringify(missingFields)}
+
+TAREFA:
+Retorne APENAS um JSON válido corrigido no MESMO schema strategy_core_v2.
+- Não remova nada que já esteja correto.
+- Corrija explicitamente a cobertura: cada campo em missing_fields deve virar used=true com how_used claro e refletir impacto em pelo menos 1 decisão (decision_trace) e 1 trecho do gtm_strategy_doc.
+- Use os inputs originais: ${JSON.stringify(formData)}
+`;
+         try {
+            const repairRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: repairPrompt }] }],
+                generationConfig: { maxOutputTokens: 8192, temperature: 0.1, responseMimeType: "application/json" }
+              })
+            });
+            const repairData = await repairRes.json();
+            const repairText = repairData.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (repairText) {
+               const repairedStrategy = cleanJSON(repairText);
+               if (repairedStrategy) {
+                  parsedStrategy = repairedStrategy;
+                  console.log("✅ Strategy Repaired Successfully");
+               }
+            }
+         } catch (repairErr) {
+            console.error("❌ Repair failed, using original", repairErr);
+         }
+      }
+
       setStrategyCore(parsedStrategy);
   
-      // ===== 3️⃣ BATTLECARDS + MESSAGING (PARALELO - CORRIGIDO) =====
+      // ===== 3️⃣ BATTLECARDS + MESSAGING (PARALELO) =====
       setPipelineStep(3);
       setStatusMessage('⚔️ 3/4 Assets Táticos...');
   
