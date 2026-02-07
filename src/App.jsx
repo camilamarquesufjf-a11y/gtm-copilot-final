@@ -983,4 +983,18 @@ const GTMCopilot = () => {
                   <XCircle className="w-6 h-6 text-slate-400" />
                 </button>
               </div>
-              
+                            <p className="text-xs text-center text-slate-500 mt-4">
+                  Suas chaves são salvas apenas no seu navegador e nunca são enviadas para nossos servidores.
+                </p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+export default GTMCopilot;
+  
+
