@@ -46,57 +46,44 @@ CONTEXT:
 - Description: ${context.description}
 - Market: ${context.businessType} / ${context.accountSize}
 - Competitors: ${context.comp1}, ${context.comp2}
-
-⚠️ META-INSTRUCTION: The example JSON below shows STRUCTURE and FORMAT only.
-You MUST replace all bracketed placeholders [LIKE_THIS] with REAL DATA from Google Search.
-NEVER copy specific numbers, company names, or facts from the example.
-
 CRITICAL INSTRUCTION: Your response must be ONLY valid JSON. No explanations before or after.
 Start your response with { and end with }
-
-REQUIRED JSON OUTPUT STRUCTURE:
+REQUIRED JSON OUTPUT (copy this structure exactly):
 {
   "market_intel": {
     "claims": [
       {
         "claim_id": "C1",
-        "type": "competitor",
-        "statement": "[REAL_COMPETITOR_NAME como ${context.comp1}] possui [REAL_NUMBER encontrado no Google] [usuários/clientes/etc] (crescimento de [REAL_%] YoY desde [BASELINE_REAL] em [YEAR_REAL]), segundo [SOURCE_REAL]. [Adicione 1-2 fatos específicos sobre features/diferenciais encontrados na busca].",
-        "source_name": "[Nome real da fonte que você encontrou]",
-        "source_url": "[URL real encontrado no Google ou null se não disponível]",
+        "type": "trend",
+        "statement": "Afirmação factual curta baseada em pesquisa",
+        "source_name": "Nome da fonte (ex: TechCrunch)",
+        "source_url": "https://example.com or null",
         "retrieved_at": "2026-02-09",
-        "confidence": [0.4 a 0.9 baseado na qualidade da fonte]
+        "confidence": 0.8
+      },
+      {
+        "claim_id": "C2",
+        "type": "competitor",
+        "statement": "Outra informação relevante do mercado",
+        "source_name": "Fonte",
+        "source_url": null,
+        "retrieved_at": "2026-02-09",
+        "confidence": 0.6
       }
     ],
-    "notes_on_gaps": ["Liste dados que você procurou mas NÃO encontrou"]
+    "notes_on_gaps": ["Dados críticos não encontrados"]
   }
 }
-
-QUALITY STANDARDS (use these as guidelines, not templates to copy):
-✅ Include: specific numbers, percentages, timeframes, named sources
-✅ Focus on: ${context.productName}, ${context.comp1}, ${context.businessType} market
-✅ Prefer: government data, industry reports, official company releases
-✅ Avoid: vague generalities, unsourced claims, old data (pre-2025)
-
-FORMAT EXAMPLES (showing structure - DO NOT copy content):
-Topic: [Hypothetical Fintech]
-"A [Company X] cresceu [Y%] em 2025 (de [A] para [B] usuários), segundo [Source], oferecendo [Feature 1] e [Feature 2]."
-
-Topic: [Hypothetical SaaS]
-"O mercado de [Industry] no Brasil atingiu R$[X]B em 2025 (crescimento de [Y%] vs [Z]B em 2024), segundo [Research Firm]."
-
-NOW EXECUTE:
-1. Use Google Search to find 3-4 REAL facts about:
-   - ${context.comp1} (competitor data: users, market share, key features)
-   - ${context.businessType} market trends in Brazil (2025-2026)
-   - Economic/macro factors relevant to ${context.productName}
-2. Generate JSON with REAL data (not placeholders, not example content)
-3. Types: competitor, trend, macro, pricing
-4. RETURN ONLY JSON - NO MARKDOWN, NO EXPLANATIONS
+RULES:
+- Generate 2-4 claims using Google Search results
+- Types: trend, competitor, pricing, macro
+- Confidence: 0.4 to 0.9 (based on source quality)
+- If search fails, use confidence 0.4 and source_url: null
+- RETURN ONLY JSON - NO MARKDOWN, NO EXPLANATIONS
 Execute Google Search now and return JSON.`,
 
   STRATEGY: (context, intel) => `YOU ARE: VP of Go-to-Market Strategy
-MISSION: Generate battle plan with QUANTIFIED decisions based on ${context.productName}
+MISSION: Generate battle plan OR block if risk is too high
 INPUTS:
 Product: ${context.productName}
 Persona: ${context.persona}
@@ -106,114 +93,89 @@ Urgency: ${context.urgency}
 Churn Rate: ${context.churnRate}%
 VALIDATED INTEL (from Google Search):
 ${JSON.stringify(intel?.market_intel?.claims || [], null, 2)}
-⚠️ META-INSTRUCTION: The JSON structure below contains PLACEHOLDERS in [BRACKETS].
-You MUST replace ALL placeholders with content SPECIFIC to ${context.productName}.
-NEVER copy example calculations, company names, or strategies verbatim.
-ALWAYS derive insights from the VALIDATED INTEL above and ${context} inputs.
-
-GATING RULES:
-1. Identify critical unknowns specific to ${context.productName}
-2. Calculate unknowns_ratio = (high-impact unknowns / 8)
+GATING RULES (Risk Assessment):
+1. Identify critical unknowns (Pricing, Competitor, Persona)
+2. Calculate unknowns_ratio = (number of unknowns / 8)
 3. IF ratio > 0.30 → set "strategy_allowed": false
-
 CRITICAL INSTRUCTION: Your response must be ONLY valid JSON. No text before or after.
-
-REQUIRED JSON STRUCTURE (replace ALL [PLACEHOLDERS]):
+Start with { and end with }
+REQUIRED JSON OUTPUT (copy exactly):
 {
   "decision_layer": {
-    "context_summary": "[Escreva 2-3 frases conectando dados do INTEL com oportunidade de ${context.productName}. Mencione números específicos do intel.]",
+    "context_summary": "Resumo executivo em 2 frases",
     "unknowns": [
-      {
-        "field": "[Específico para ${context.productName}, ex: viabilidade do modelo de preço de ${context.pricing}]",
-        "impact": "High/Medium/Low",
-        "mitigation": "[Ação concreta para reduzir unknow]"
-      }
+      {"field": "nomeDoCampo", "impact": "High"}
     ],
-    "unknowns_ratio": [Calcule: número de unknowns High / 8],
-    "strategy_allowed": [true se ratio ≤ 0.30, senão false],
+    "unknowns_ratio": 0.0,
+    "strategy_allowed": true,
     "critical_decisions": [
       {
-        "title": "[Decisão específica para ${context.productName}]",
+        "title": "Título da Decisão Chave",
         "preferred_option": {
-          "option": "[Ação recomendada COM números, prazos, budget estimado baseado em ${context}]",
-          "confidence": [0.6 a 0.95],
-          "why": "[Justificativa citando claims do INTEL com IDs: C1, C2, etc]",
-          "evidence_claim_ids": ["C1", "C2"],
-          "financial_implications": "[Custo estimado + retorno esperado COM cálculos]",
-          "success_criteria": "[Métricas mensuráveis: X < Y, Z > W, prazo]"
+          "option": "Ação recomendada",
+          "confidence": 0.9,
+          "why": "Justificativa em uma frase",
+          "evidence_claim_ids": ["C1", "C2"]
         },
         "alternative_option": {
-          "option": "[Alternativa viável]",
-          "risk": "[Risco específico dessa escolha]",
-          "when_to_consider": "[Condição trigger: 'Se X acontecer...']"
+          "option": "Abordagem alternativa",
+          "risk": "Risco ao escolher esta opção"
         }
       }
     ]
   },
   "alignment_layer": {
-    "product_brief": "[Direção para produto específica para ${context.productName}]",
-    "sales_brief": "[Pitch + objeções específicas para ${context.persona}]",
-    "leadership_brief": "[Análise risco/retorno COM números]"
+    "product_brief": "Orientação para time de produto",
+    "sales_brief": "Orientação para time de vendas",
+    "leadership_brief": "Análise executiva de risco vs retorno"
   },
   "strategy_layer": {
     "gtm_thesis": {
-      "enemy": "[Competidor/status quo específico: ${context.comp1} ou bancões/etc]",
-      "tension": "[Dor específica de ${context.persona} que ${context.productName} resolve]",
-      "why_now": "[Urgência baseada em INTEL macro + gap competitivo COM dados]"
+      "enemy": "Competidor principal ou status quo",
+      "tension": "Dor de mercado que resolvemos",
+      "why_now": "Justificativa de timing"
     },
     "positioning": {
-      "category": "[Categoria específica onde ${context.productName} compete]",
-      "unique_value": "[Diferenciação clara vs ${context.comp1}]"
+      "category": "Categoria do produto",
+      "unique_value": "Nossa diferenciação"
     },
     "metrics": {
-      "north_star": "[UMA métrica primária específica para ${context.productName}]",
+      "north_star": "KPI primário",
       "success_metrics": [
-        {"metric": "[Nome]", "target": "[Baseline → Meta]", "timeframe": "[Prazo]"}
+        {"metric": "Nome KPI", "target": "Meta", "timeframe": "90d"}
       ]
     },
     "plan_30_60_90": {
-      "days_0_30": ["[Ação 1 COM budget/meta]", "[Ação 2 COM budget/meta]", "[Ação 3]"],
-      "days_31_60": ["[Ação 4]", "[Ação 5]"],
-      "days_61_90": ["[Ação 6]", "[Ação 7]"]
+      "days_0_30": ["Ação 1", "Ação 2", "Ação 3"],
+      "days_31_60": ["Ação 4", "Ação 5"],
+      "days_61_90": ["Ação 6", "Ação 7"]
     },
     "messaging": {
-      "core_message": "[Mensagem ≤10 palavras para ${context.productName}]",
-      "sub_headline": "[Submensagem]",
+      "core_message": "Mensagem principal (máximo 10 palavras)",
+      "sub_headline": "Submensagem de apoio",
       "value_pillars": [
-        {"pillar": "[Nome]", "proof": "[Evidência COM números]"}
+        {"pillar": "Nome do pilar", "proof": "Evidência ou métrica"}
       ]
     },
     "battlecards": {
       "main_competitor": {
         "competitor": "${context.comp1 || 'Líder de mercado'}",
-        "their_strength": "[Força real do competidor baseada em INTEL]",
-        "our_kill_point": "[Nossa vantagem COM evidências]"
+        "their_strength": "O que eles fazem bem",
+        "our_kill_point": "Nossa vantagem decisiva"
       },
       "objection_handling": [
-        {"objection": "[Objeção real de ${context.persona}]", "answer": "[Resposta específica]"}
+        {"objection": "Objeção comum", "answer": "Resposta convincente"}
       ]
     }
   }
 }
-
-CRITICAL QUALITY RULES:
-✅ ALL content MUST be specific to ${context.productName}, NOT generic
-✅ ALL "why" fields MUST cite intel claims (C1, C2, etc)
-✅ ALL financial_implications MUST include rough calculations
-✅ ALL success_criteria MUST be measurable (< > = numbers)
-✅ North Star MUST be ONE clear metric (not "growth" or generic)
-✅ Plan actions MUST include budget/targets when relevant
-✅ Value pillars MUST have quantified proof
-
-MINIMUM REQUIREMENTS:
-- 3 critical_decisions (each with financial_implications + success_criteria)
-- 3 value_pillars (each with numbers in proof)
-- 5 objection_handling (realistic for ${context.persona})
-- All "why" fields cite evidence_claim_ids
+IMPORTANT:
 - If strategy_allowed = false, set strategy_layer = null
-
-Generate strategy NOW for ${context.productName}.
-RETURN ONLY JSON - NO MARKDOWN, NO EXPLANATIONS.`
+- Generate 2-3 critical_decisions minimum
+- Generate 2-3 value_pillars minimum
+- Generate 3-5 objection_handling items
+- Cite evidence_claim_ids when using intel data
+- RETURN ONLY JSON - NO MARKDOWN, NO EXPLANATIONS
 Generate strategy now.`
 };
 
@@ -1131,6 +1093,3 @@ const GTMCopilot = () => {
 };
 
 export default GTMCopilot;
-
-
-
