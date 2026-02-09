@@ -34,149 +34,230 @@ const CONFIG = {
 
 /**
  * ==============================================================================
- * MÓDULO 2: PROMPTS ENTERPRISE
+ * MÓDULO 2: PROMPTS ENTERPRISE (GOOGLE SEARCH + JSON FORÇADO)
  * ==============================================================================
  */
 const PROMPTS = {
-  INTEL: (context) => `
-    ATUE COMO: Analista de Mercado Sênior (Enterprise Level).
-    MISSÃO: Validar premissas de GTM usando dados RECENTES (2025-2026).
-    FERRAMENTA: Use Google Search obrigatoriamente para validar fatos.
-
-    CONTEXTO DO CLIENTE:
-    Produto: ${context.productName}
-    Descrição: ${context.description}
-    Mercado: ${context.businessType} / ${context.accountSize}
-    Competidores: ${context.comp1}, ${context.comp2}
-    
-    OUTPUT JSON OBRIGATÓRIO:
-    {
-      "market_intel": {
-        "claims": [
-          {
-            "claim_id": "C1",
-            "type": "trend|competitor|pricing|macro",
-            "statement": "Afirmação curta e factual",
-            "source_name": "Nome da Fonte (ex: TechCrunch)",
-            "source_url": "URL válida",
-            "retrieved_at": "YYYY-MM-DD",
-            "confidence": 0.0
-          }
-        ],
-        "notes_on_gaps": ["Dados críticos não encontrados..."]
+  INTEL: (context) => `YOU ARE: Senior Market Intelligence Analyst
+MISSION: Validate GTM assumptions using Google Search for RECENT data (2025-2026)
+TOOL: You MUST use Google Search to validate facts
+CONTEXT:
+- Product: ${context.productName}
+- Description: ${context.description}
+- Market: ${context.businessType} / ${context.accountSize}
+- Competitors: ${context.comp1}, ${context.comp2}
+CRITICAL INSTRUCTION: Your response must be ONLY valid JSON. No explanations before or after.
+Start your response with { and end with }
+REQUIRED JSON OUTPUT (copy this structure exactly):
+{
+  "market_intel": {
+    "claims": [
+      {
+        "claim_id": "C1",
+        "type": "trend",
+        "statement": "Short factual statement from search",
+        "source_name": "Source name (e.g., TechCrunch)",
+        "source_url": "https://example.com or null",
+        "retrieved_at": "2026-02-09",
+        "confidence": 0.8
+      },
+      {
+        "claim_id": "C2",
+        "type": "competitor",
+        "statement": "Another fact",
+        "source_name": "Source",
+        "source_url": null,
+        "retrieved_at": "2026-02-09",
+        "confidence": 0.6
       }
-    }
-  `,
+    ],
+    "notes_on_gaps": ["List any critical data not found"]
+  }
+}
+RULES:
+- Generate 2-4 claims using Google Search results
+- Types: trend, competitor, pricing, macro
+- Confidence: 0.4 to 0.9 (based on source quality)
+- If search fails, use confidence 0.4 and source_url: null
+- RETURN ONLY JSON - NO MARKDOWN, NO EXPLANATIONS
+Execute Google Search now and return JSON.`,
 
-  STRATEGY: (context, intel) => `
-    ATUE COMO: VP de Estratégia de Go-to-Market.
-    MISSÃO: Gerar plano de ataque ou BLOQUEAR se o risco for alto.
-    
-    INPUTS:
-    ${JSON.stringify(context, null, 2)}
-    
-    INTEL DE MERCADO (Validado):
-    ${JSON.stringify(intel, null, 2)}
-
-    REGRAS DE GATING (Risco):
-    1. Identifique variáveis desconhecidas críticas (Preço, Competidor, Persona).
-    2. Calcule 'unknowns_ratio' = (unknowns / 8).
-    3. SE ratio > 0.30 -> "strategy_allowed": false.
-    
-    OUTPUT JSON OBRIGATÓRIO:
-    {
-      "decision_layer": {
-        "context_summary": "Resumo executivo",
-        "unknowns": [{"field": "...", "impact": "High|Med"}],
-        "unknowns_ratio": 0.0,
-        "strategy_allowed": true,
-        "critical_decisions": [
-          {
-            "title": "Decisão Chave",
-            "preferred_option": { 
-              "option": "...", 
-              "confidence": 0.9, 
-              "why": "...",
-              "evidence_claim_ids": ["C1"]
-            },
-            "alternative_option": { "option": "...", "risk": "..." }
-          }
-        ]
-      },
-      "alignment_layer": {
-        "product_brief": "...",
-        "sales_brief": "...",
-        "leadership_brief": "..."
-      },
-      "strategy_layer": { 
-        "gtm_thesis": { "enemy": "...", "tension": "...", "why_now": "..." },
-        "positioning": { "category": "...", "unique_value": "..." },
-        "metrics": {
-           "north_star": "...",
-           "success_metrics": [{ "metric": "...", "target": "...", "timeframe": "..." }]
+  STRATEGY: (context, intel) => `YOU ARE: VP of Go-to-Market Strategy
+MISSION: Generate battle plan OR block if risk is too high
+INPUTS:
+Product: ${context.productName}
+Persona: ${context.persona}
+Pricing: ${context.pricing}
+Main Competitor: ${context.comp1}
+Urgency: ${context.urgency}
+Churn Rate: ${context.churnRate}%
+VALIDATED INTEL (from Google Search):
+${JSON.stringify(intel?.market_intel?.claims || [], null, 2)}
+GATING RULES (Risk Assessment):
+1. Identify critical unknowns (Pricing, Competitor, Persona)
+2. Calculate unknowns_ratio = (number of unknowns / 8)
+3. IF ratio > 0.30 → set "strategy_allowed": false
+CRITICAL INSTRUCTION: Your response must be ONLY valid JSON. No text before or after.
+Start with { and end with }
+REQUIRED JSON OUTPUT (copy exactly):
+{
+  "decision_layer": {
+    "context_summary": "Brief 2-sentence executive summary",
+    "unknowns": [
+      {"field": "fieldName", "impact": "High"}
+    ],
+    "unknowns_ratio": 0.0,
+    "strategy_allowed": true,
+    "critical_decisions": [
+      {
+        "title": "Key Decision Title",
+        "preferred_option": {
+          "option": "Recommended action",
+          "confidence": 0.9,
+          "why": "Justification in 1 sentence",
+          "evidence_claim_ids": ["C1", "C2"]
         },
-        "plan_30_60_90": {
-           "days_0_30": ["..."],
-           "days_31_60": ["..."],
-           "days_61_90": ["..."]
-        },
-        "messaging": {
-          "core_message": "...",
-          "sub_headline": "...",
-          "value_pillars": [{"pillar": "...", "proof": "..."}]
-        },
-        "battlecards": {
-          "main_competitor": { "competitor": "...", "their_strength": "...", "our_kill_point": "..." },
-          "objection_handling": [{"objection": "...", "answer": "..."}]
+        "alternative_option": {
+          "option": "Alternative approach",
+          "risk": "Risk if we choose this"
         }
       }
+    ]
+  },
+  "alignment_layer": {
+    "product_brief": "Guidance for product team",
+    "sales_brief": "Guidance for sales team",
+    "leadership_brief": "Executive risk/reward analysis"
+  },
+  "strategy_layer": {
+    "gtm_thesis": {
+      "enemy": "Status quo or main competitor name",
+      "tension": "Market pain we solve",
+      "why_now": "Timing rationale"
+    },
+    "positioning": {
+      "category": "Product category",
+      "unique_value": "Our differentiation"
+    },
+    "metrics": {
+      "north_star": "Primary KPI",
+      "success_metrics": [
+        {"metric": "KPI", "target": "Value", "timeframe": "90d"}
+      ]
+    },
+    "plan_30_60_90": {
+      "days_0_30": ["Action 1", "Action 2", "Action 3"],
+      "days_31_60": ["Action 4", "Action 5"],
+      "days_61_90": ["Action 6", "Action 7"]
+    },
+    "messaging": {
+      "core_message": "Main headline (10 words max)",
+      "sub_headline": "Supporting message",
+      "value_pillars": [
+        {"pillar": "Pillar name", "proof": "Evidence/metric"}
+      ]
+    },
+    "battlecards": {
+      "main_competitor": {
+        "competitor": "${context.comp1 || 'Market Leader'}",
+        "their_strength": "What they do well",
+        "our_kill_point": "Our decisive advantage"
+      },
+      "objection_handling": [
+        {"objection": "Common objection", "answer": "Counter-response"}
+      ]
     }
-  `
+  }
+}
+IMPORTANT:
+- If strategy_allowed = false, set strategy_layer = null
+- Generate 2-3 critical_decisions minimum
+- Generate 2-3 value_pillars minimum
+- Generate 3-5 objection_handling items
+- Cite evidence_claim_ids when using intel data
+- RETURN ONLY JSON - NO MARKDOWN, NO EXPLANATIONS
+Generate strategy now.`
 };
 
 /**
  * ==============================================================================
- * MÓDULO 3: SERVICES & HELPERS (COM TODOS OS FIXES)
+ * MÓDULO 3: SERVICES (GOOGLE SEARCH + PARSING ROBUSTO)
  * ==============================================================================
  */
 const GeminiService = {
   cleanJSON: (text) => {
     if (!text) return null;
-    let clean = text.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+    
+    // Step 1: Remove markdown blocks
+    let clean = text
+      .replace(/```json\n?/gi, '')
+      .replace(/```\n?/g, '')
+      .replace(/^json\n/i, '');
+    
+    // Step 2: Extract JSON object (find first { to last })
     const firstBrace = clean.indexOf('{');
     const lastBrace = clean.lastIndexOf('}');
-    if (firstBrace !== -1 && lastBrace !== -1) clean = clean.substring(firstBrace, lastBrace + 1);
-    try { return JSON.parse(clean); } 
-    catch (e) { 
-      console.error("❌ JSON Parse Error:", e.message, "\n\nRaw:", clean.substring(0, 200));
-      return null; 
+    
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      clean = clean.substring(firstBrace, lastBrace + 1);
+    }
+    
+    // Step 3: Try parse
+    try {
+      return JSON.parse(clean);
+    } catch (e) {
+      // Step 4: Aggressive cleanup
+      try {
+        // Remove control characters
+        const sanitized = clean.replace(/[\x00-\x1F\x7F]/g, '');
+        return JSON.parse(sanitized);
+      } catch (e2) {
+        console.error("❌ JSON Parse Failed:", e2.message);
+        console.error("Text preview:", clean.substring(0, 300));
+        return null;
+      }
     }
   },
 
-  call: async (apiKey, systemPrompt, userPrompt, retryCount = 0) => {
+  validateSchema: (data, type) => {
+    if (!data || typeof data !== 'object') return false;
+    
+    if (type === 'intel') {
+      return !!(data.market_intel?.claims && Array.isArray(data.market_intel.claims));
+    }
+    
+    if (type === 'strategy') {
+      return !!(data.decision_layer && data.alignment_layer);
+    }
+    
+    return false;
+  },
+
+  call: async (apiKey, systemPrompt, userPrompt, expectedType, retryCount = 0) => {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${CONFIG.GEMINI_MODEL}:generateContent?key=${apiKey}`;
     
     if (!apiKey || apiKey.length < 30) {
-      throw new Error("API Key inválida ou muito curta. Verifique em https://aistudio.google.com/apikey");
+      throw new Error("API Key inválida");
     }
 
-    // 🔥 FIX: Remover responseMimeType quando usar google_search
+    // 🔥 GOOGLE SEARCH ATIVO (sem responseMimeType)
     const payload = {
-      contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-      systemInstruction: { parts: [{ text: systemPrompt }] },
-      tools: [{ google_search: {} }],
+      contents: [{ 
+         role: "user", 
+         parts: [{ 
+           text: `${systemPrompt}\n\n${userPrompt}\n\nREMINDER: Return ONLY JSON starting with { and ending with }. No markdown. No explanations.` 
+         }] 
+       }],
+      tools: [{ google_search: {} }], // ✅ SEARCH ATIVO
       generationConfig: { 
         maxOutputTokens: 8192, 
-        temperature: 0.2
-        // ❌ REMOVIDO: responseMimeType (incompatível com tools)
+        temperature: 0.1
+        // ❌ NO responseMimeType (incompatível com tools)
       }
     };
 
-    console.log("📤 Gemini Request:", {
-      model: CONFIG.GEMINI_MODEL,
-      promptLength: userPrompt.length,
-      hasSearch: true,
-      hasMimeType: false, // ✅ Agora false
+    console.log("📤 Gemini Request (Google Search Active):", {
+      type: expectedType,
       timestamp: new Date().toISOString()
     });
 
@@ -187,68 +268,77 @@ const GeminiService = {
         body: JSON.stringify(payload)
       });
 
-      console.log("📥 Gemini Response:", {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok
-      });
+      console.log("📥 Response Status:", response.status);
 
-      // 🔄 RETRY (Rate Limit)
+      // Retry on rate limit
       if (response.status === 429 && retryCount < 3) {
         const delay = Math.pow(2, retryCount) * 1000;
-        console.warn(`⚠️ Rate Limit (429) - Retry ${retryCount + 1}/3 em ${delay}ms...`);
+        console.warn(`⚠️ Rate Limit - Retry ${retryCount + 1}/3 in ${delay}ms`);
         await new Promise(r => setTimeout(r, delay));
-        return GeminiService.call(apiKey, systemPrompt, userPrompt, retryCount + 1);
+        return GeminiService.call(apiKey, systemPrompt, userPrompt, expectedType, retryCount + 1);
       }
 
-      // 🔴 ERROR HANDLING
       if (!response.ok) {
-        const errorBody = await response.text();
-        console.error("❌ Gemini Error Body:", errorBody);
-        
-        let errorMsg = `Status ${response.status}`;
-        try {
-          const errJson = JSON.parse(errorBody);
-          errorMsg = errJson.error?.message || errJson.error?.status || errorMsg;
-        } catch (e) {
-          errorMsg = errorBody.substring(0, 200) || response.statusText || errorMsg;
-        }
-
-        throw new Error(`Gemini API Error: ${errorMsg}`);
+        const err = await response.text();
+        console.error("❌ API Error:", err.substring(0, 300));
+        throw new Error(`Gemini API Error ${response.status}`);
       }
 
-      // ✅ SUCCESS
       const data = await response.json();
-      console.log("✅ Gemini Raw Data:", {
-        candidatesCount: data.candidates?.length,
-        hasContent: !!data.candidates?.[0]?.content,
-        firstPartPreview: data.candidates?.[0]?.content?.parts?.[0]?.text?.substring(0, 100)
-      });
-
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      let text = data.candidates?.[0]?.content?.parts?.[0]?.text;
       
       if (!text) {
-        console.error("❌ Empty Response:", JSON.stringify(data, null, 2));
-        throw new Error("Gemini retornou resposta vazia. Possível bloqueio de segurança.");
+        console.error("❌ Empty response");
+        throw new Error("Gemini retornou vazio");
       }
 
-      console.log("📄 Raw Text (primeiros 500 chars):", text.substring(0, 500));
+      console.log("📄 Raw text length:", text.length);
+      console.log("📄 Preview:", text.substring(0, 150).replace(/\n/g, ' '));
 
-      const parsed = GeminiService.cleanJSON(text);
-      
-      if (!parsed) {
-        console.error("❌ Parse Failed. Full Text:", text);
-        throw new Error("Falha ao parsear JSON. Gemini pode ter retornado texto não estruturado.");
+      // 🔥 MULTI-STEP PARSING
+      let parsed = null;
+
+      // Attempt 1: Direct parse
+      try {
+        parsed = JSON.parse(text);
+        console.log("✅ Direct parse SUCCESS");
+      } catch (e) {
+        console.warn("⚠️ Direct parse failed, trying cleanup...");
+        
+        // Attempt 2: CleanJSON
+        parsed = GeminiService.cleanJSON(text);
+        
+        if (parsed) {
+          console.log("✅ CleanJSON SUCCESS");
+        } else {
+          // Attempt 3: Regex extraction
+          console.warn("⚠️ Trying regex extraction...");
+          const jsonMatch = text.match(/\{[\s\S]*\}/);
+          
+          if (jsonMatch) {
+            try {
+              parsed = JSON.parse(jsonMatch[0]);
+              console.log("✅ Regex extraction SUCCESS");
+            } catch (e3) {
+              console.error("❌ All parsing methods failed");
+              console.error("Full text:", text);
+              throw new Error("Não foi possível extrair JSON válido. Gemini pode estar retornando texto livre.");
+            }
+          }
+        }
       }
 
-      console.log("✅ Parsed JSON:", parsed);
+      // Validate schema
+      if (!GeminiService.validateSchema(parsed, expectedType)) {
+        console.error("❌ Schema validation failed");
+        console.error("Parsed data:", JSON.stringify(parsed, null, 2).substring(0, 500));
+        throw new Error(`JSON válido mas estrutura incorreta para tipo '${expectedType}'`);
+      }
 
+      console.log("✅ Parse + Validation SUCCESS");
       return parsed;
 
     } catch (error) {
-      if (error.name === 'TypeError' && error.message.includes('fetch')) {
-        throw new Error("Erro de rede: Verifique sua conexão e tente novamente.");
-      }
       console.error("💥 Fatal Error:", error);
       throw error;
     }
@@ -511,7 +601,14 @@ const GTMCopilot = () => {
       setStatusMessage('🕵️ Intel (Google Search)...');
       addLog("Step 1: Executing Market Intel Search...");
       
-      const intelRes = await GeminiService.call(apiKey, PROMPTS.INTEL(formData), "Execute Market Intel Search.");
+      // CALL 1: INTEL
+      const intelRes = await GeminiService.call(
+        apiKey, 
+        PROMPTS.INTEL(formData), 
+        "Execute Market Intel Search using Google.", 
+        'intel' // ← tipo esperado
+      );
+
       if (!intelRes) throw new Error("Intel Generation Failed");
       
       setIntelData(intelRes);
@@ -521,7 +618,14 @@ const GTMCopilot = () => {
       setStatusMessage('🧠 Decision Engine...');
       addLog("Step 2: Running Decision Engine & Gating...");
       
-      const strategyRes = await GeminiService.call(apiKey, PROMPTS.STRATEGY(formData, intelRes), "Execute Strategy Generation.");
+      // CALL 2: STRATEGY
+      const strategyRes = await GeminiService.call(
+        apiKey, 
+        PROMPTS.STRATEGY(formData, intelRes), 
+        "Execute Strategy Generation.", 
+        'strategy' // ← tipo esperado
+      );
+
       if (!strategyRes) throw new Error("Strategy Generation Failed");
       
       setStrategyData(strategyRes);
