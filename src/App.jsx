@@ -38,25 +38,34 @@ const CONFIG = {
  * ==============================================================================
  */
 const PROMPTS = {
-  INTEL: (context) => `YOU ARE: Senior Market Intelligence Analyst
+  INTEL: (context) => `
+YOU ARE: Senior Market Intelligence Analyst
 MISSION: Validate GTM assumptions using Google Search for RECENT data (2025-2026)
 TOOL: You MUST use Google Search to validate facts
+
 CONTEXT:
 - Product: ${context.productName}
 - Description: ${context.description}
 - Market: ${context.businessType} / ${context.accountSize}
 - Competitors: ${context.comp1}, ${context.comp2}
+
+LANGUAGE REQUIREMENT: 
+- JSON structure keys must be in ENGLISH
+- ALL content values (statements, descriptions, text) must be in PORTUGUESE (Brazilian)
+
 CRITICAL INSTRUCTION: Your response must be ONLY valid JSON. No explanations before or after.
 Start your response with { and end with }
-REQUIRED JSON OUTPUT (copy this structure exactly):
+
+REQUIRED JSON OUTPUT (structure in English, content in Portuguese):
+
 {
   "market_intel": {
     "claims": [
       {
         "claim_id": "C1",
         "type": "trend",
-        "statement": "Short factual statement from search",
-        "source_name": "Source name (e.g., TechCrunch)",
+        "statement": "Afirmação factual curta da pesquisa (EM PORTUGUÊS)",
+        "source_name": "Nome da fonte (ex: TechCrunch)",
         "source_url": "https://example.com or null",
         "retrieved_at": "2026-02-09",
         "confidence": 0.8
@@ -64,26 +73,32 @@ REQUIRED JSON OUTPUT (copy this structure exactly):
       {
         "claim_id": "C2",
         "type": "competitor",
-        "statement": "Another fact",
-        "source_name": "Source",
+        "statement": "Outro fato importante (EM PORTUGUÊS)",
+        "source_name": "Fonte",
         "source_url": null,
         "retrieved_at": "2026-02-09",
         "confidence": 0.6
       }
     ],
-    "notes_on_gaps": ["List any critical data not found"]
+    "notes_on_gaps": ["Liste dados críticos não encontrados (EM PORTUGUÊS)"]
   }
 }
+
 RULES:
 - Generate 2-4 claims using Google Search results
 - Types: trend, competitor, pricing, macro
 - Confidence: 0.4 to 0.9 (based on source quality)
 - If search fails, use confidence 0.4 and source_url: null
 - RETURN ONLY JSON - NO MARKDOWN, NO EXPLANATIONS
-Execute Google Search now and return JSON.`,
+- ALL TEXT CONTENT MUST BE IN PORTUGUESE (Brazilian)
 
-  STRATEGY: (context, intel) => `YOU ARE: VP of Go-to-Market Strategy
+Execute Google Search now and return JSON.
+`,
+
+  STRATEGY: (context, intel) => `
+YOU ARE: VP of Go-to-Market Strategy
 MISSION: Generate battle plan OR block if risk is too high
+
 INPUTS:
 Product: ${context.productName}
 Persona: ${context.persona}
@@ -91,92 +106,104 @@ Pricing: ${context.pricing}
 Main Competitor: ${context.comp1}
 Urgency: ${context.urgency}
 Churn Rate: ${context.churnRate}%
+
 VALIDATED INTEL (from Google Search):
 ${JSON.stringify(intel?.market_intel?.claims || [], null, 2)}
+
+LANGUAGE REQUIREMENT: 
+- JSON structure keys must be in ENGLISH
+- ALL content values (titles, descriptions, messages, answers) must be in PORTUGUESE (Brazilian)
+
 GATING RULES (Risk Assessment):
 1. Identify critical unknowns (Pricing, Competitor, Persona)
 2. Calculate unknowns_ratio = (number of unknowns / 8)
 3. IF ratio > 0.30 → set "strategy_allowed": false
+
 CRITICAL INSTRUCTION: Your response must be ONLY valid JSON. No text before or after.
 Start with { and end with }
-REQUIRED JSON OUTPUT (copy exactly):
+
+REQUIRED JSON OUTPUT (structure in English, content in Portuguese):
+
 {
   "decision_layer": {
-    "context_summary": "Brief 2-sentence executive summary",
+    "context_summary": "Resumo executivo de 2 frases (EM PORTUGUÊS)",
     "unknowns": [
-      {"field": "fieldName", "impact": "High"}
+      {"field": "nomeDoCampo", "impact": "High"}
     ],
     "unknowns_ratio": 0.0,
     "strategy_allowed": true,
     "critical_decisions": [
       {
-        "title": "Key Decision Title",
+        "title": "Título da Decisão Chave (EM PORTUGUÊS)",
         "preferred_option": {
-          "option": "Recommended action",
+          "option": "Ação recomendada (EM PORTUGUÊS)",
           "confidence": 0.9,
-          "why": "Justification in 1 sentence",
+          "why": "Justificativa em 1 frase (EM PORTUGUÊS)",
           "evidence_claim_ids": ["C1", "C2"]
         },
         "alternative_option": {
-          "option": "Alternative approach",
-          "risk": "Risk if we choose this"
+          "option": "Abordagem alternativa (EM PORTUGUÊS)",
+          "risk": "Risco ao escolher esta opção (EM PORTUGUÊS)"
         }
       }
     ]
   },
   "alignment_layer": {
-    "product_brief": "Guidance for product team",
-    "sales_brief": "Guidance for sales team",
-    "leadership_brief": "Executive risk/reward analysis"
+    "product_brief": "Orientação para o time de produto (EM PORTUGUÊS)",
+    "sales_brief": "Orientação para o time comercial (EM PORTUGUÊS)",
+    "leadership_brief": "Análise de risco vs retorno (EM PORTUGUÊS)"
   },
   "strategy_layer": {
     "gtm_thesis": {
-      "enemy": "Status quo or main competitor name",
-      "tension": "Market pain we solve",
-      "why_now": "Timing rationale"
+      "enemy": "Status quo ou nome do competidor principal (EM PORTUGUÊS)",
+      "tension": "Dor de mercado que resolvemos (EM PORTUGUÊS)",
+      "why_now": "Justificativa de timing (EM PORTUGUÊS)"
     },
     "positioning": {
-      "category": "Product category",
-      "unique_value": "Our differentiation"
+      "category": "Categoria do produto (EM PORTUGUÊS)",
+      "unique_value": "Nossa diferenciação (EM PORTUGUÊS)"
     },
     "metrics": {
-      "north_star": "Primary KPI",
+      "north_star": "KPI primária (pode ser em inglês se sigla comum)",
       "success_metrics": [
-        {"metric": "KPI", "target": "Value", "timeframe": "90d"}
+        {"metric": "Nome do KPI", "target": "Valor", "timeframe": "90d"}
       ]
     },
     "plan_30_60_90": {
-      "days_0_30": ["Action 1", "Action 2", "Action 3"],
-      "days_31_60": ["Action 4", "Action 5"],
-      "days_61_90": ["Action 6", "Action 7"]
+      "days_0_30": ["Ação 1 (EM PORTUGUÊS)", "Ação 2 (EM PORTUGUÊS)", "Ação 3 (EM PORTUGUÊS)"],
+      "days_31_60": ["Ação 4 (EM PORTUGUÊS)", "Ação 5 (EM PORTUGUÊS)"],
+      "days_61_90": ["Ação 6 (EM PORTUGUÊS)", "Ação 7 (EM PORTUGUÊS)"]
     },
     "messaging": {
-      "core_message": "Main headline (10 words max)",
-      "sub_headline": "Supporting message",
+      "core_message": "Manchete principal (máximo 10 palavras) (EM PORTUGUÊS)",
+      "sub_headline": "Mensagem de apoio (EM PORTUGUÊS)",
       "value_pillars": [
-        {"pillar": "Pillar name", "proof": "Evidence/metric"}
+        {"pillar": "Nome do pilar (EM PORTUGUÊS)", "proof": "Evidência/métrica (EM PORTUGUÊS)"}
       ]
     },
     "battlecards": {
       "main_competitor": {
-        "competitor": "${context.comp1 || 'Market Leader'}",
-        "their_strength": "What they do well",
-        "our_kill_point": "Our decisive advantage"
+        "competitor": "${context.comp1 || 'Líder de Mercado'}",
+        "their_strength": "O que eles fazem bem (EM PORTUGUÊS)",
+        "our_kill_point": "Nossa vantagem decisiva (EM PORTUGUÊS)"
       },
       "objection_handling": [
-        {"objection": "Common objection", "answer": "Counter-response"}
+        {"objection": "Objeção comum (EM PORTUGUÊS)", "answer": "Contra-resposta (EM PORTUGUÊS)"}
       ]
     }
   }
 }
+
 IMPORTANT:
 - If strategy_allowed = false, set strategy_layer = null
 - Generate 2-3 critical_decisions minimum
-- Generate 2-3 value_pillars minimum
+- Generate 2-3 value_pillars minimum  
 - Generate 3-5 objection_handling items
 - Cite evidence_claim_ids when using intel data
 - RETURN ONLY JSON - NO MARKDOWN, NO EXPLANATIONS
-Generate strategy now.`
+- ALL TEXT CONTENT MUST BE IN PORTUGUESE (Brazilian)
+Generate strategy now.
+`
 };
 
 /**
@@ -1093,3 +1120,4 @@ const GTMCopilot = () => {
 };
 
 export default GTMCopilot;
+
