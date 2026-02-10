@@ -9,6 +9,7 @@ import {
   ChevronLeft, Building2, User, Server, Database, Lock,
   ExternalLink, Terminal, Activity, Check
 } from 'lucide-react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 
 /**
  * ==============================================================================
@@ -1744,6 +1745,7 @@ const GTMCopilot = () => {
         )}
       </AnimatePresence>
 
+      <SpeedInsights />
     </div>
   );
 };
